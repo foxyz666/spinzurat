@@ -15,7 +15,7 @@ body {
 }
 
 .app {
-  max-width: 900px;
+  max-width: 950px;
   width: 100%;
   padding: 24px 16px 32px;
 }
@@ -84,6 +84,10 @@ input {
   color: #f5f5f5;
 }
 
+.name-input {
+  margin-bottom: 12px;
+}
+
 .party-actions {
   display: flex;
   gap: 10px;
@@ -107,7 +111,7 @@ input {
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.4);
-  margin: 6px 0;
+  margin: 6px 0 10px;
 }
 
 #party-code-display {
@@ -115,9 +119,16 @@ input {
   letter-spacing: 0.15em;
 }
 
-.small-text {
-  font-size: 0.85rem;
-  color: #a3b5d5;
+.host-controls {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+ul {
+  margin: 6px 0;
+  padding-left: 18px;
 }
 
 .message {
