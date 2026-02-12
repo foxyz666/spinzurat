@@ -1,19 +1,35 @@
-// 1) CONFIG FIREBASE – înlocuiește cu valorile tale din Firebase console
+// =========================
+// 1) CONFIG FIREBASE
+// =========================
 const firebaseConfig = {
   apiKey: "AIzaSyCLJDyC8iLxQjsK6VrrMOtzj5ukfmuARC8",
   authDomain: "spanzuratoarea-online.firebaseapp.com",
+  databaseURL:
+    "https://spanzuratoarea-online-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "spanzuratoarea-online",
   storageBucket: "spanzuratoarea-online.firebasestorage.app",
   messagingSenderId: "698255636308",
   appId: "1:698255636308:web:225201554f9fadd634bac1",
-  measurementId: "G-MNBDW17ZL3"
+  measurementId: "G-MNBDW17ZL3",
 };
 
-// Init Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// TEST simplu: scriem/citim din DB ca să vedem dacă merge
+db.ref("testConnection")
+  .set({ ok: true, time: Date.now() })
+  .then(() => db.ref("testConnection").get())
+  .then((snap) => {
+    console.log("Firebase DB OK, citit:", snap.val());
+  })
+  .catch((err) => {
+    console.error("Eroare Firebase DB:", err);
+  });
+
+// =========================
 // 2) STATE
+// =========================
 let myId = null;
 let myName = "";
 let myRole = null; // "host" sau "guest"
@@ -25,9 +41,12 @@ let wrongGuesses = 0;
 let maxWrong = 7;
 let gameOver = false;
 
-let secretWordNormalized = ""; // doar la host
+let originalWord = ""; // doar la host, dar îl salvăm și în DB
+let secretWordNormalized = ""; // la host + DB
 
+// =========================
 // 3) DOM
+// =========================
 const partyScreen = document.getElementById("party-screen");
 const gameScreen = document.getElementById("game-screen");
 
@@ -61,7 +80,9 @@ const guessBtn = document.getElementById("guess-btn");
 const keyboard = document.getElementById("keyboard");
 const gameMessage = document.getElementById("game-message");
 
+// =========================
 // 4) Utilitare
+// =========================
 function showScreen(screen) {
   [partyScreen, gameScreen].forEach((s) => s.classList.remove("active"));
   screen.classList.add("active");
@@ -145,7 +166,22 @@ function renderWord() {
   });
 }
 
-// 5) Party: Create
+function buildKeyboardFromGuessed(guessedStr) {
+  if (!keyboard.children.length) buildKeyboard();
+  const guessed = guessedStr.split("").filter(Boolean);
+  guessed.forEach((letter) => {
+    const btn = Array.from(keyboard.querySelectorAll("button")).find(
+      (b) => b.dataset.letter === letter
+    );
+    if (btn) {
+      btn.disabled = true;
+    }
+  });
+}
+
+// =========================
+// 5) CREATE PARTY (HOST)
+// =========================
 createPartyBtn.addEventListener("click", async () => {
   myName = playerNameInput.value.trim() || "Anon";
   myId = myId || randomId();
@@ -154,6 +190,7 @@ createPartyBtn.addEventListener("click", async () => {
   partyCode = randomPartyCode();
 
   const roomRef = db.ref("rooms/" + partyCode);
+
   await roomRef.set({
     hostId: myId,
     state: "lobby", // lobby | playing | finished
@@ -162,7 +199,9 @@ createPartyBtn.addEventListener("click", async () => {
     guessedLetters: "",
     lengths: [],
     revealed: [],
-    secretWordHash: "",
+    originalWord: "",
+    secretWordNormalized: "",
+    endMessage: "",
     players: {
       [myId]: {
         id: myId,
@@ -173,23 +212,25 @@ createPartyBtn.addEventListener("click", async () => {
   });
 
   partyCodeDisplay.textContent = partyCode;
-  partyStatus.textContent = "Party creat. Aștept să intre prietenii.";
+  partyStatus.textContent = "Party creat. Aștept să intre prietenul.";
   createPartyPanel.classList.remove("hidden");
   joinPartyPanel.classList.add("hidden");
 
-  // Ascultă modificările pentru a vedea cine intră
+  // Ascultă modificările ca să vezi jucătorii și starea jocului
   roomRef.on("value", (snap) => {
     const data = snap.val();
     if (!data) return;
+
     renderPlayersList(partyPlayersList, data.players);
     renderPlayersList(gamePlayersList, data.players);
 
+    // Dacă jocul a început sau s-a terminat, sincronizăm UI joc
     if (data.state === "playing" || data.state === "finished") {
-      // Sincronizăm jocul
       lengths = data.lengths || [];
       revealed = data.revealed || [];
       wrongGuesses = data.wrongGuesses || 0;
       maxWrong = data.maxWrong || 7;
+
       wrongCountSpan.textContent = wrongGuesses.toString();
       maxWrongSpan.textContent = maxWrong.toString();
       renderWord();
@@ -197,18 +238,26 @@ createPartyBtn.addEventListener("click", async () => {
       showScreen(gameScreen);
       gamePartyCodeEl.textContent = partyCode;
 
-      // Verificăm dacă e final
-      const isWin = data.revealed && data.revealed.every((v) => v !== null || v === " " || v === "-");
+      buildKeyboard();
+      buildKeyboardFromGuessed(data.guessedLetters || "");
+
       if (data.state === "finished") {
+        gameOver = true;
+        gameMessage.textContent = data.endMessage || "Joc terminat.";
+        if (data.endMessage && data.endMessage.startsWith("Bravo")) {
+          gameMessage.classList.add("win");
+        } else {
+          gameMessage.classList.add("lose");
+        }
         disableKeyboard();
       }
-
-      buildKeyboardFromGuessed(data.guessedLetters || "");
     }
   });
 });
 
-// 6) Party: Join
+// =========================
+// 6) JOIN PARTY (GUEST)
+// =========================
 joinPartyBtn.addEventListener("click", () => {
   myName = playerNameInput.value.trim() || "Anon";
   myId = myId || randomId();
@@ -239,7 +288,6 @@ joinCodeConfirmBtn.addEventListener("click", async () => {
     return;
   }
 
-  // Adăugăm jucătorul în players
   await roomRef.child("players/" + myId).set({
     id: myId,
     name: myName,
@@ -250,34 +298,43 @@ joinCodeConfirmBtn.addEventListener("click", async () => {
   showScreen(gameScreen);
   gamePartyCodeEl.textContent = partyCode;
 
-  // Ascultă room-ul pentru update-uri
   roomRef.on("value", (snap2) => {
     const d = snap2.val();
     if (!d) return;
+
     renderPlayersList(gamePlayersList, d.players);
 
     lengths = d.lengths || [];
     revealed = d.revealed || [];
     wrongGuesses = d.wrongGuesses || 0;
     maxWrong = d.maxWrong || 7;
+
     wrongCountSpan.textContent = wrongGuesses.toString();
     maxWrongSpan.textContent = maxWrong.toString();
     renderWord();
 
+    buildKeyboard();
     buildKeyboardFromGuessed(d.guessedLetters || "");
 
     if (d.state === "playing") {
       gameMessage.textContent = "Jocul a început, poți ghici litere!";
-      buildKeyboard();
-      buildKeyboardFromGuessed(d.guessedLetters || "");
+      gameOver = false;
     } else if (d.state === "finished") {
+      gameOver = true;
       gameMessage.textContent = d.endMessage || "Joc terminat.";
+      if (d.endMessage && d.endMessage.startsWith("Bravo")) {
+        gameMessage.classList.add("win");
+      } else {
+        gameMessage.classList.add("lose");
+      }
       disableKeyboard();
     }
   });
 });
 
-// 7) Host: Start Game (setare cuvânt)
+// =========================
+// 7) HOST: START GAME
+// =========================
 startGameBtn.addEventListener("click", async () => {
   if (myRole !== "host" || !partyCode) return;
   const word = secretWordInput.value.trim();
@@ -286,22 +343,22 @@ startGameBtn.addEventListener("click", async () => {
     return;
   }
 
+  originalWord = word;
   const letters = Array.from(word);
   lengths = letters.map((ch) => {
     if (ch === " ") return "space";
     if (ch === "-") return "dash";
     return "letter";
   });
-
   revealed = letters.map((ch) => {
     if (ch === " ") return " ";
     if (ch === "-") return "-";
     return null;
   });
-
   secretWordNormalized = letters.map(normalizeLetter).join("");
   wrongGuesses = 0;
   maxWrong = 7;
+  gameOver = false;
 
   const roomRef = db.ref("rooms/" + partyCode);
   await roomRef.update({
@@ -311,13 +368,17 @@ startGameBtn.addEventListener("click", async () => {
     lengths,
     revealed,
     guessedLetters: "",
+    originalWord,
+    secretWordNormalized,
     endMessage: "",
   });
 
   partyStatus.textContent = "Joc pornit!";
 });
 
-// 8) Ghicitorul: trimite literă
+// =========================
+// 8) GUEST: GHICEȘTE LITERĂ
+// =========================
 function sendGuess(ch) {
   if (myRole !== "guest" || !partyCode || gameOver) return;
   ch = ch.toUpperCase();
@@ -325,21 +386,12 @@ function sendGuess(ch) {
 
   const roomRef = db.ref("rooms/" + partyCode);
 
-  // Actualizare atomică în DB (host + guest împart logica)
   roomRef.transaction((room) => {
     if (!room || room.state !== "playing") return room;
 
     const letter = ch;
     const norm = normalizeLetter(letter);
-    const secretNorm = room.secretWordNormalized || null; // pentru simplicitate, nu-l stocăm; aici lăsăm gol
-    // Vom folosi doar revealed + secretWordHash? Ca demo, simplificăm:
-    // => host-ul are logica, guest-ul doar marchează litera ca ghicită,
-    // iar host-ul face calculele. Pentru claritate: mutăm logica la host
-    // (dar aici, în exemplu simplificat, facem direct în transaction):
-
-    // Ca să fie auto-conținut, stocăm secretWordNormalized în room (actualizează la startGame)
-    // Aici presupunem că există:
-    const normalizedSecret = room.secretWordNormalized || secretWordNormalized;
+    const normalizedSecret = room.secretWordNormalized || "";
 
     let guessed = room.guessedLetters || "";
     if (guessed.includes(letter)) {
@@ -348,9 +400,10 @@ function sendGuess(ch) {
     guessed += letter;
 
     const secretArr = Array.from(normalizedSecret);
-    const revealedArr = room.revealed ? [...room.revealed] : [];
-    const originalWord = room.originalWord || ""; // dacă vrei, poți salva și asta
-    const origArr = originalWord ? Array.from(originalWord) : [];
+    const revealedArr = Array.isArray(room.revealed)
+      ? [...room.revealed]
+      : [];
+    const origArr = Array.from(room.originalWord || "");
 
     let found = false;
     if (secretArr.length && origArr.length) {
@@ -367,7 +420,10 @@ function sendGuess(ch) {
 
     const isWin = revealedArr.length
       ? revealedArr.every((v, idx) => {
-          if (room.lengths[idx] === "space" || room.lengths[idx] === "dash")
+          if (
+            room.lengths[idx] === "space" ||
+            room.lengths[idx] === "dash"
+          )
             return true;
           return v !== null;
         })
@@ -382,7 +438,7 @@ function sendGuess(ch) {
       endMessage = "Bravo! Cuvânt ghicit!";
     } else if (isLose) {
       state = "finished";
-      endMessage = `Ai pierdut. Cuvântul era: "${originalWord}".`;
+      endMessage = `Ai pierdut. Cuvântul era: "${room.originalWord}".`;
     }
 
     return {
@@ -396,23 +452,9 @@ function sendGuess(ch) {
   });
 }
 
-// 9) Reconstruim tastatura după litere ghicite
-function buildKeyboardFromGuessed(guessedStr) {
-  if (!keyboard.children.length) buildKeyboard();
-  const guessed = guessedStr.split("").filter(Boolean);
-  guessed.forEach((letter) => {
-    const btn = Array.from(keyboard.querySelectorAll("button")).find(
-      (b) => b.dataset.letter === letter
-    );
-    if (btn) {
-      btn.disabled = true;
-      // nu știm încă dacă a fost corectă sau nu, dar putem deduce din revealed/wrong
-      // pentru simplu, marcăm doar disabled
-    }
-  });
-}
-
-// 10) Input ghicitor (text box)
+// =========================
+// 9) Input Ghicitor (text box)
+// =========================
 guessBtn.addEventListener("click", () => {
   const ch = letterInput.value.trim();
   if (!ch) return;
@@ -428,7 +470,9 @@ letterInput.addEventListener("keydown", (e) => {
   }
 });
 
-// 11) Copiere cod
+// =========================
+// 10) Copiere cod party
+// =========================
 copyCodeBtn.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(partyCodeDisplay.textContent);
