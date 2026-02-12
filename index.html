@@ -2,86 +2,25 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8" />
-  <title>Spânzurătoarea Online (Party Code + Firebase)</title>
+  <title>Spânzurătoarea Online - Create Party Test</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- SDK Firebase (compat simplu pentru început) -->
+  <!-- Firebase compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
 <body>
   <div class="app">
-    <h1>Spânzurătoarea Online</h1>
+    <h1>Spânzurătoarea Online - Test Create Party</h1>
 
-    <!-- Ecran Party / Connectare -->
-    <section id="party-screen" class="screen active">
-      <h2>Party Online</h2>
+    <p>
+      Numele tău:
+      <input id="player-name-input" type="text" placeholder="ex: Alex" />
+    </p>
 
-      <div class="name-input">
-        <label>
-          Numele tău:
-          <input id="player-name-input" type="text" placeholder="ex: Alex" />
-        </label>
-      </div>
+    <button id="create-party-btn">Create Party</button>
 
-      <div class="party-actions">
-        <button id="create-party-btn">Create Party</button>
-        <button id="join-party-btn" class="secondary">Join Party</button>
-      </div>
-
-      <!-- Panel Create Party -->
-      <div id="create-party-panel" class="panel hidden">
-        <p>Party creat! Codul tău este:</p>
-        <div class="party-code-box">
-          <span id="party-code-display"></span>
-          <button id="copy-code-btn" class="small-btn">Copy</button>
-        </div>
-
-        <p><strong>Cine este în party:</strong></p>
-        <ul id="party-players-list"></ul>
-
-        <div class="host-controls">
-          <label>
-            Cuvântul / expresia (ascunsă pentru ceilalți):
-            <input id="secret-word-input" type="password" />
-          </label>
-          <button id="start-game-btn">Start Game</button>
-        </div>
-      </div>
-
-      <!-- Panel Join Party -->
-      <div id="join-party-panel" class="panel hidden">
-        <p>Introdu codul primit de la prieten:</p>
-        <input id="join-code-input" type="text" placeholder="ex: ABCD12" />
-        <button id="join-code-confirm-btn">Connect</button>
-      </div>
-
-      <p id="party-status" class="message"></p>
-    </section>
-
-    <!-- Ecran Joc comun -->
-    <section id="game-screen" class="screen">
-      <h2>Joc</h2>
-      <p>Party code: <strong id="game-party-code"></strong></p>
-      <p>Jucători în party:</p>
-      <ul id="game-players-list"></ul>
-
-      <div class="status-bar">
-        <span>Greșeli: <strong id="wrong-count">0</strong> / <span id="max-wrong">7</span></span>
-      </div>
-
-      <div id="word-display" class="word-display"></div>
-
-      <div class="controls">
-        <div class="guess-input">
-          <label for="letter-input">Ghicitorul: ghicește o literă</label>
-          <input id="letter-input" type="text" maxlength="1" autocomplete="off" />
-          <button id="guess-btn">Ghicește</button>
-        </div>
-        <div id="keyboard" class="keyboard"></div>
-      </div>
-
-      <p id="game-message" class="message"></p>
-    </section>
+    <p id="status"></p>
+    <p>Party code: <strong id="party-code-display"></strong></p>
   </div>
 
   <script src="script.js"></script>
