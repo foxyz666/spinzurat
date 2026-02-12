@@ -1,3 +1,12 @@
+// ===== UTIL: log în pagină + consolă =====
+function addDebug(msg) {
+  console.log(msg);
+  const pre = document.getElementById("debug-log");
+  if (pre) {
+    pre.textContent += msg + "\n";
+  }
+}
+
 // ===== 1) CONFIG FIREBASE - DATELE TALE =====
 const firebaseConfig = {
   apiKey: "AIzaSyCLJDyC8iLxQjsK6VrrMOtzj5ukfmuARC8",
@@ -11,29 +20,40 @@ const firebaseConfig = {
   measurementId: "G-MNBDW17ZL3",
 };
 
-console.log("Încep inițializarea Firebase...");
+addDebug("Încep inițializarea Firebase...");
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-console.log("Firebase initializat.");
+addDebug("Firebase.initializeApp() apelat.");
+
+let db;
+try {
+  db = firebase.database();
+  addDebug("firebase.database() OK.");
+} catch (err) {
+  addDebug("Eroare la firebase.database(): " + err.message);
+}
 
 // ===== 2) TEST conexiune DB =====
-db.ref("testConnection2")
-  .set({ ok: true, time: Date.now() })
-  .then(() => {
-    console.log("Scris în DB OK (testConnection2).");
-    return db.ref("testConnection2").get();
-  })
-  .then((snap) => {
-    console.log("Citit din DB (testConnection2):", snap.val());
-  })
-  .catch((err) => {
-    console.error("Eroare Firebase DB la testConnection2:", err);
-    const statusEl = document.getElementById("status");
-    if (statusEl) {
-      statusEl.textContent =
-        "Eroare la conectarea la Firebase: " + err.message;
-    }
-  });
+if (db) {
+  db.ref("testConnection2")
+    .set({ ok: true, time: Date.now() })
+    .then(() => {
+      addDebug("Scris în DB OK (testConnection2).");
+      return db.ref("testConnection2").get();
+    })
+    .then((snap) => {
+      addDebug("Citit din DB (testConnection2): " + JSON.stringify(snap.val()));
+    })
+    .catch((err) => {
+      addDebug("Eroare Firebase DB la testConnection2: " + err.message);
+      const statusEl = document.getElementById("status");
+      if (statusEl) {
+        statusEl.textContent =
+          "Eroare la conectarea la Firebase: " + err.message;
+      }
+    });
+} else {
+  addDebug("DB NU este inițializat (db este null).");
+}
 
 // ===== 3) Utilitare =====
 function randomId() {
@@ -55,39 +75,56 @@ const createPartyBtn = document.getElementById("create-party-btn");
 const statusEl = document.getElementById("status");
 const partyCodeDisplay = document.getElementById("party-code-display");
 
+// Verificăm că am luat elementele
+if (!playerNameInput) addDebug("NU găsesc #player-name-input");
+if (!createPartyBtn) addDebug("NU găsesc #create-party-btn");
+if (!statusEl) addDebug("NU găsesc #status");
+if (!partyCodeDisplay) addDebug("NU găsesc #party-code-display");
+
 // ===== 5) CREATE PARTY =====
-createPartyBtn.addEventListener("click", async () => {
-  try {
-    statusEl.textContent = "Se creează party...";
-    console.log("Buton Create Party apăsat.");
+if (createPartyBtn) {
+  createPartyBtn.addEventListener("click", async () => {
+    addDebug("CLICK pe Create Party.");
+    try {
+      if (!db) {
+        addDebug("db este null, nu pot crea party.");
+        statusEl.textContent =
+          "Eroare internă: baza de date nu este inițializată.";
+        return;
+      }
 
-    const myName = playerNameInput.value.trim() || "Anon";
-    const myId = randomId();
-    const partyCode = randomPartyCode();
+      statusEl.textContent = "Se creează party...";
 
-    console.log("myName:", myName);
-    console.log("myId:", myId);
-    console.log("partyCode:", partyCode);
+      const myName = playerNameInput.value.trim() || "Anon";
+      const myId = randomId();
+      const partyCode = randomPartyCode();
 
-    const roomRef = db.ref("rooms/" + partyCode);
+      addDebug("myName: " + myName);
+      addDebug("myId: " + myId);
+      addDebug("partyCode: " + partyCode);
 
-    await roomRef.set({
-      hostId: myId,
-      createdAt: Date.now(),
-      players: {
-        [myId]: {
-          id: myId,
-          name: myName,
-          role: "host",
+      const roomRef = db.ref("rooms/" + partyCode);
+
+      await roomRef.set({
+        hostId: myId,
+        createdAt: Date.now(),
+        players: {
+          [myId]: {
+            id: myId,
+            name: myName,
+            role: "host",
+          },
         },
-      },
-    });
+      });
 
-    console.log("Room set OK în DB la rooms/" + partyCode);
-    partyCodeDisplay.textContent = partyCode;
-    statusEl.textContent = "Party creat cu succes!";
-  } catch (err) {
-    console.error("Eroare la Create Party:", err);
-    statusEl.textContent = "Eroare la Create Party: " + err.message;
-  }
-});
+      addDebug("Room set OK în DB la rooms/" + partyCode);
+      partyCodeDisplay.textContent = partyCode;
+      statusEl.textContent = "Party creat cu succes!";
+    } catch (err) {
+      addDebug("Eroare la Create Party: " + err.message);
+      statusEl.textContent = "Eroare la Create Party: " + err.message;
+    }
+  });
+} else {
+  addDebug("createPartyBtn este null, nu pot atașa handlerul de click.");
+}
