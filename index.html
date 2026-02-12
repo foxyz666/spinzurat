@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spânzurătoarea Online (Party Code)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <h1>Spânzurătoarea Online</h1>
+
+    <!-- Ecran Party / Connectare -->
+    <section id="party-screen" class="screen active">
+      <h2>Party Online</h2>
+
+      <div class="party-actions">
+        <button id="create-party-btn">Create Party</button>
+        <button id="join-party-btn" class="secondary">Join Party</button>
+      </div>
+
+      <div id="create-party-panel" class="panel hidden">
+        <p>Party creat! Trimite acest cod prietenului tău:</p>
+        <div class="party-code-box">
+          <span id="party-code-display"></span>
+          <button id="copy-code-btn" class="small-btn">Copy</button>
+        </div>
+        <p class="small-text">Tu vei fi <strong>Călăul</strong> (alegi cuvântul).</p>
+      </div>
+
+      <div id="join-party-panel" class="panel hidden">
+        <p>Introdu codul primit de la prieten:</p>
+        <input id="join-code-input" type="text" placeholder="ex: ABCD12" />
+        <button id="join-code-confirm-btn">Connect</button>
+        <p class="small-text">Tu vei fi <strong>Ghicitorul</strong>.</p>
+      </div>
+
+      <p id="party-status" class="message"></p>
+    </section>
+
+    <!-- Ecran Călău: setare cuvânt -->
+    <section id="host-screen" class="screen">
+      <h2>Călău</h2>
+      <p>Party code: <strong id="host-party-code"></strong></p>
+      <p id="guest-status" class="message"></p>
+
+      <label for="secret-word-input">
+        Alege cuvântul / expresia (ascunsă pentru Ghicitor):
+      </label>
+      <input id="secret-word-input" type="password" />
+      <button id="set-word-btn">Pornește jocul</button>
+    </section>
+
+    <!-- Ecran Joc comun -->
+    <section id="game-screen" class="screen">
+      <p>Party code: <strong id="game-party-code"></strong></p>
+      <div class="status-bar">
+        <span>Greșeli: <strong id="wrong-count">0</strong> / <span id="max-wrong">7</span></span>
+      </div>
+
+      <!-- Aici poți integra ulterior și desenul spânzuratului -->
+      <div id="word-display" class="word-display"></div>
+
+      <div class="controls">
+        <div class="guess-input">
+          <label for="letter-input">Ghicitorul: ghicește o literă</label>
+          <input id="letter-input" type="text" maxlength="1" autocomplete="off" />
+          <button id="guess-btn">Ghicește</button>
+        </div>
+        <div id="keyboard" class="keyboard"></div>
+      </div>
+
+      <p id="game-message" class="message"></p>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
