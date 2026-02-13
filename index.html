@@ -2,7 +2,7 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8" />
-  <title>Spânzurătoarea Online</title>
+  <title>Spânzurătoarea Online (Role Swap)</title>
   <link rel="stylesheet" href="style.css" />
   <!-- Firebase compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -12,9 +12,9 @@
   <div class="app">
     <h1>Spânzurătoarea Online</h1>
 
-    <!-- Ecran Party -->
+    <!-- PARTY SCREEN -->
     <section id="party-screen" class="screen active">
-      <h2>Party Online</h2>
+      <h2>Party</h2>
 
       <div class="name-input">
         <label>
@@ -28,29 +28,23 @@
         <button id="join-party-btn" class="secondary">Join Party</button>
       </div>
 
-      <!-- Host: după Create Party -->
       <div id="create-party-panel" class="panel hidden">
-        <p>Party creat! Codul tău este:</p>
+        <p>Party creat! Cod:</p>
         <div class="party-code-box">
           <span id="party-code-display"></span>
           <button id="copy-code-btn" class="small-btn">Copy</button>
         </div>
 
-        <p><strong>Cine este în party:</strong></p>
+        <p><strong>Jucători:</strong></p>
         <ul id="party-players-list"></ul>
 
-        <div class="host-controls">
-          <label>
-            Cuvântul / expresia (ascunsă pentru ceilalți):
-            <input id="secret-word-input" type="password" />
-          </label>
-          <button id="start-game-btn">Start Game</button>
-        </div>
+        <p class="small-text">
+          Notă: în joc, primul care ghicește este Host-ul (după cerința ta).
+        </p>
       </div>
 
-      <!-- Guest: după Join Party -->
       <div id="join-party-panel" class="panel hidden">
-        <p>Introdu codul primit de la prieten:</p>
+        <p>Introdu codul:</p>
         <input id="join-code-input" type="text" placeholder="ex: ABCD12" />
         <button id="join-code-confirm-btn">Connect</button>
       </div>
@@ -58,30 +52,94 @@
       <p id="party-status" class="message"></p>
     </section>
 
-    <!-- Ecran Joc -->
+    <!-- GAME SCREEN -->
     <section id="game-screen" class="screen">
-      <h2>Joc</h2>
-      <p>Party code: <strong id="game-party-code"></strong></p>
-
-      <p>Jucători în party:</p>
-      <ul id="game-players-list"></ul>
-
-      <div class="status-bar">
-        <span>Greșeli: <strong id="wrong-count">0</strong> / <span id="max-wrong">7</span></span>
-      </div>
-
-      <div id="word-display" class="word-display"></div>
-
-      <div class="controls">
-        <div class="guess-input">
-          <label for="letter-input">Ghicitorul: ghicește o literă</label>
-          <input id="letter-input" type="text" maxlength="1" autocomplete="off" />
-          <button id="guess-btn">Ghicește</button>
+      <div class="topbar">
+        <div>
+          Party: <strong id="game-party-code"></strong>
         </div>
-        <div id="keyboard" class="keyboard"></div>
+        <div>
+          Runda: <strong id="round-number">1</strong>
+        </div>
       </div>
 
-      <p id="game-message" class="message"></p>
+      <div class="roles">
+        <div>Chooser (alege cuvântul): <strong id="chooser-name"></strong></div>
+        <div>Guesser (ghicește): <strong id="guesser-name"></strong></div>
+      </div>
+
+      <div class="layout">
+        <!-- Hangman -->
+        <div class="gallows-container">
+          <svg id="hangman-svg" viewBox="0 0 200 250">
+            <line x1="20" y1="230" x2="180" y2="230" class="gallow" />
+            <line x1="50" y1="230" x2="50" y2="30" class="gallow" />
+            <line x1="50" y1="30" x2="130" y2="30" class="gallow" />
+            <line x1="130" y1="30" x2="130" y2="60" class="gallow" />
+
+            <circle id="part-head" cx="130" cy="80" r="18" class="part hidden" />
+            <line id="part-body" x1="130" y1="98" x2="130" y2="150" class="part hidden" />
+            <line id="part-arm-left" x1="130" y1="110" x2="105" y2="135" class="part hidden" />
+            <line id="part-arm-right" x1="130" y1="110" x2="155" y2="135" class="part hidden" />
+            <line id="part-leg-left" x1="130" y1="150" x2="110" y2="190" class="part hidden" />
+            <line id="part-leg-right" x1="130" y1="150" x2="150" y2="190" class="part hidden" />
+            <g id="part-hat" class="part hidden">
+              <rect x="115" y="52" width="30" height="10" rx="2" ry="2" />
+              <rect x="120" y="42" width="20" height="12" rx="2" ry="2" />
+            </g>
+          </svg>
+
+          <div class="status-bar">
+            Greșeli: <strong id="wrong-count">0</strong> / <span id="max-wrong">7</span>
+          </div>
+        </div>
+
+        <!-- Word & controls -->
+        <div class="panel-right">
+          <div>
+            <p><strong>Jucători în party:</strong></p>
+            <ul id="game-players-list"></ul>
+          </div>
+
+          <div id="word-display" class="word-display"></div>
+
+          <!-- Chooser UI -->
+          <div id="chooser-box" class="chooser-box hidden">
+            <h3>Alege cuvântul (Chooser)</h3>
+
+            <div class="suggestions">
+              <div class="suggestion-title">Sugestii ușoare:</div>
+              <div id="suggestion-chips" class="chips"></div>
+              <button id="random-suggestion-btn" class="secondary">Alege aleator</button>
+            </div>
+
+            <label>
+              Cuvânt / expresie:
+              <input id="secret-word-input" type="password" placeholder="scrie aici..." />
+            </label>
+            <button id="set-word-btn">Setează cuvântul</button>
+            <p class="small-text">După setare, Guesser poate începe să ghicească.</p>
+          </div>
+
+          <!-- Guesser UI -->
+          <div id="guesser-box" class="guesser-box hidden">
+            <h3>Ghicește (Guesser)</h3>
+
+            <div class="guess-input">
+              <input id="letter-input" type="text" maxlength="1" autocomplete="off" />
+              <button id="guess-btn">Ghicește</button>
+            </div>
+
+            <div id="keyboard" class="keyboard"></div>
+          </div>
+
+          <p id="game-message" class="message"></p>
+
+          <div class="end-controls">
+            <button id="force-next-round-btn" class="secondary hidden">Următoarea rundă</button>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
 
