@@ -82,6 +82,9 @@ const partyPlayersList = document.getElementById("party-players-list");
 
 const joinCodeInput = document.getElementById("join-code-input");
 const joinCodeConfirmBtn = document.getElementById("join-code-confirm-btn");
+const expireMinutesSelect = document.getElementById("expire-minutes-select");
+const roundsSelect = document.getElementById("rounds-select");
+const partySettingsSummary = document.getElementById("party-settings-summary");
 
 const partyStatus = document.getElementById("party-status");
 
@@ -196,6 +199,7 @@ function renderWord(lengths, revealed) {
       slot.className = "letter-slot";
       const ch = revealed?.[idx];
       slot.textContent = ch ? ch.toUpperCase() : "";
+      if (ch) slot.classList.add("correct");
     }
     wordDisplay.appendChild(slot);
   });
@@ -254,6 +258,8 @@ function buildKeyboard(disabledLetters = "", correctnessMap = {}) {
 createPartyBtn.addEventListener("click", async () => {
   myName = playerNameInput.value.trim() || "Anon";
   myId = myId || randomId();
+  const expireMinutes = Number(expireMinutesSelect.value) || 10;
+  const totalRounds = Number(roundsSelect.value) || 7;
 
   partyCode = randomPartyCode();
   roomRef = db.ref("rooms/" + partyCode);
@@ -262,6 +268,9 @@ createPartyBtn.addEventListener("click", async () => {
   // => la început chooser = primul guest care intră, guesser = host
   await roomRef.set({
     createdAt: Date.now(),
+    expiresAt: Date.now() + expireMinutes * 60 * 1000,
+    expireMinutes,
+    totalRounds,
     round: 1,
     state: "lobby", // lobby | choosing | playing | finished
     maxWrong: MAX_WRONG,
@@ -286,6 +295,7 @@ createPartyBtn.addEventListener("click", async () => {
   });
 
   partyCodeDisplay.textContent = partyCode;
+  partySettingsSummary.textContent = `Expiră în ${expireMinutes} minute • ${totalRounds} runde`;
   createPartyPanel.classList.remove("hidden");
   joinPartyPanel.classList.add("hidden");
   partyStatus.textContent = "Party creat. Trimite codul prietenului tău.";
@@ -314,6 +324,11 @@ joinCodeConfirmBtn.addEventListener("click", async () => {
   const snap = await roomRef.get();
   if (!snap.exists()) {
     partyStatus.textContent = "Party-ul nu există.";
+    return;
+  }
+  const room = snap.val();
+  if (room?.expiresAt && Date.now() > room.expiresAt) {
+    partyStatus.textContent = "Party-ul a expirat.";
     return;
   }
 
@@ -345,6 +360,11 @@ function attachRoomListener() {
   roomRef.on("value", (snap) => {
     const room = snap.val();
     if (!room) return;
+    if (room.expiresAt && Date.now() > room.expiresAt) {
+      showScreen(partyScreen);
+      partyStatus.textContent = "Party-ul a expirat. Creează unul nou.";
+      return;
+    }
 
     showScreen(gameScreen);
     gamePartyCodeEl.textContent = partyCode;
@@ -362,6 +382,11 @@ function attachRoomListener() {
     // message
     gameMessage.className = "message";
     gameMessage.textContent = room.endMessage || "";
+    if ((room.endMessage || "").startsWith("Litera corecta aleasa")) {
+      gameMessage.classList.add("correct");
+    } else if ((room.endMessage || "").startsWith("Literă greșită")) {
+      gameMessage.classList.add("lose");
+    }
 
     // UI by role & state
     const isChooser = room.chooserId === myId;
@@ -390,7 +415,7 @@ function attachRoomListener() {
 
     // If finished, allow host to force next round (optional)
     const isHost = room.hostId === myId;
-    forceNextRoundBtn.classList.toggle("hidden", !(room.state === "finished" && isHost));
+    forceNextRoundBtn.classList.toggle("hidden", !(room.state === "finished" && isHost && !room.gameCompleted));
   });
 }
 
@@ -495,7 +520,7 @@ function sendGuess(letter) {
       state = "finished";
       endMessage = `Guesser a pierdut! Cuvântul era: "${room.originalWord}". Se schimbă rolurile...`;
     } else {
-      endMessage = found ? `Corect: ${L}` : `Greșit: ${L}`;
+      endMessage = found ? `Litera corecta aleasa: ${L}` : `Literă greșită: ${L}`;
     }
 
     return {
@@ -550,6 +575,13 @@ async function swapRolesAndPrepareNextRound() {
 
     // marker: lastSwappedRound
     const currentRound = room.round || 1;
+    const totalRounds = room.totalRounds || 7;
+    if (currentRound >= totalRounds) {
+      room.gameCompleted = true;
+      room.endMessage = `Joc încheiat! S-au jucat ${totalRounds} runde.`;
+      room.lastSwappedRound = currentRound;
+      return room;
+    }
     if (room.lastSwappedRound === currentRound) {
       return room; // deja swap-uit
     }

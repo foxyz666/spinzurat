@@ -23,6 +23,31 @@
         </label>
       </div>
 
+      <div class="party-options">
+        <label>
+          Expiră în:
+          <select id="expire-minutes-select">
+            <option value="5">5 min</option>
+            <option value="10" selected>10 min</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </label>
+        <label>
+          Runde:
+          <select id="rounds-select">
+            <option value="5">5</option>
+            <option value="7" selected>7</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+          </select>
+        </label>
+      </div>
+
       <div class="party-actions">
         <button id="create-party-btn">Create Party</button>
         <button id="join-party-btn" class="secondary">Join Party</button>
@@ -37,6 +62,7 @@
 
         <p><strong>Jucători:</strong></p>
         <ul id="party-players-list"></ul>
+        <p class="small-text" id="party-settings-summary"></p>
 
         <p class="small-text">
           Notă: în joc, primul care ghicește este Host-ul (după cerința ta).

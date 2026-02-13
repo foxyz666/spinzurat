@@ -25,6 +25,8 @@ h1 { text-align: center; margin-bottom: 16px; letter-spacing: 0.05em; }
 .screen.active { display: block; }
 
 .name-input { margin-bottom: 12px; }
+.party-options { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.party-options label { display: flex; align-items: center; gap: 8px; }
 .party-actions { display: flex; gap: 10px; margin-bottom: 14px; }
 
 .panel {
@@ -77,6 +79,7 @@ button.secondary { background: transparent; border: 1px solid #3b5875; box-shado
 button.small-btn { padding: 4px 10px; font-size: 0.8rem; margin-left: 8px; }
 
 .message { min-height: 22px; font-size: 0.95rem; margin-top: 10px; }
+.message.correct { color: #55ffb5; font-weight: 700; }
 .message.win { color: #55ffb5; }
 .message.lose { color: #ff9b9b; }
 
@@ -150,6 +153,7 @@ button.small-btn { padding: 4px 10px; font-size: 0.8rem; margin-left: 8px; }
 
 .letter-slot.space { border-bottom: none; width: 18px; }
 .letter-slot.dash { border-bottom: none; min-width: 26px; font-size: 1.4rem; }
+.letter-slot.correct { color: #55ffb5; font-weight: 700; }
 
 .keyboard {
   display: grid;
