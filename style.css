@@ -51,6 +51,50 @@ h1 { text-align: center; margin-bottom: 16px; letter-spacing: 0.05em; }
 
 .small-text { font-size: 0.85rem; color: #a3b5d5; }
 
+.players-status {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+.player-status-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid #3b5875;
+}
+
+.player-status-item.connected {
+  border-left-color: #55ffb5;
+}
+
+.player-status-item.waiting {
+  border-left-color: #ffa500;
+}
+
+.player-status-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.player-status-badge.connected {
+  background: #55ffb5;
+  color: #02160a;
+}
+
+.player-status-badge.waiting {
+  background: #ffa500;
+  color: #1a1a1a;
+}
+
 input, select {
   padding: 8px 10px;
   border-radius: 8px;
@@ -112,9 +156,16 @@ button.small-btn { padding: 4px 10px; font-size: 0.8rem; }
   stroke-linecap: round;
   fill: none;
   opacity: 0;
+  transition: opacity 0.3s ease-in-out;
 }
 
-.part.show { opacity: 1; }
+.part.show { 
+  opacity: 1 !important; 
+}
+
+.part.hidden {
+  opacity: 0 !important;
+}
 
 #part-hat rect { fill: #2b2b2b; stroke: #ffe8c7; stroke-width: 1.5; }
 
