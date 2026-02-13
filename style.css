@@ -36,7 +36,7 @@ h1 { text-align: center; margin-bottom: 16px; letter-spacing: 0.05em; }
   background: rgba(5, 25, 50, 0.9);
 }
 
-.hidden { display: none; }
+.hidden { display: none !important; }
 
 .party-code-box {
   display: flex; align-items: center;
@@ -44,13 +44,14 @@ h1 { text-align: center; margin-bottom: 16px; letter-spacing: 0.05em; }
   border-radius: 999px;
   background: rgba(0,0,0,0.4);
   margin: 6px 0 10px;
+  gap: 10px;
 }
 
-#party-code-display { font-weight: 700; letter-spacing: 0.15em; }
+#party-code-display { font-weight: 800; letter-spacing: 0.15em; }
 
 .small-text { font-size: 0.85rem; color: #a3b5d5; }
 
-input {
+input, select {
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid #3b5875;
@@ -64,7 +65,7 @@ button {
   border-radius: 999px;
   padding: 8px 18px;
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.03em;
   background: linear-gradient(135deg, #00b4db, #0083b0);
   color: #fefefe;
@@ -76,12 +77,11 @@ button:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(0,0,0,0.
 button:active { transform: translateY(0); opacity: 0.9; }
 
 button.secondary { background: transparent; border: 1px solid #3b5875; box-shadow: none; }
-button.small-btn { padding: 4px 10px; font-size: 0.8rem; margin-left: 8px; }
+button.small-btn { padding: 4px 10px; font-size: 0.8rem; }
 
-.message { min-height: 22px; font-size: 0.95rem; margin-top: 10px; }
-.message.correct { color: #55ffb5; font-weight: 700; }
-.message.win { color: #55ffb5; }
-.message.lose { color: #ff9b9b; }
+.message { min-height: 22px; font-size: 0.95rem; margin-top: 10px; color: #a3b5d5; }
+.message.correct { color: #55ffb5; font-weight: 800; }
+.message.lose { color: #ff9b9b; font-weight: 800; }
 
 .topbar { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .roles { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #cfe2ff; }
@@ -112,21 +112,13 @@ button.small-btn { padding: 4px 10px; font-size: 0.8rem; margin-left: 8px; }
   stroke-linecap: round;
   fill: none;
   opacity: 0;
-  transform-origin: center;
 }
 
-.part.show { animation: appear 0.35s ease-out forwards; }
-.hidden { opacity: 0; }
+.part.show { opacity: 1; }
 
 #part-hat rect { fill: #2b2b2b; stroke: #ffe8c7; stroke-width: 1.5; }
 
-@keyframes appear {
-  0% { opacity: 0; transform: scale(0.4) translateY(-5px); }
-  70% { opacity: 1; transform: scale(1.06) translateY(0); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.status-bar { margin-top: 8px; font-size: 0.95rem; text-align: center; }
+.status-bar { margin-top: 8px; font-size: 0.95rem; text-align: center; color: #cfe2ff; }
 
 .panel-right { display: flex; flex-direction: column; gap: 12px; }
 
@@ -153,7 +145,7 @@ button.small-btn { padding: 4px 10px; font-size: 0.8rem; margin-left: 8px; }
 
 .letter-slot.space { border-bottom: none; width: 18px; }
 .letter-slot.dash { border-bottom: none; min-width: 26px; font-size: 1.4rem; }
-.letter-slot.correct { color: #55ffb5; font-weight: 700; }
+.letter-slot.correct { color: #55ffb5; font-weight: 800; }
 
 .keyboard {
   display: grid;
@@ -168,14 +160,14 @@ button.small-btn { padding: 4px 10px; font-size: 0.8rem; margin-left: 8px; }
   padding: 6px 0;
   border-radius: 999px;
   font-size: 0.85rem;
-  font-weight: 700;
+  font-weight: 800;
   background: rgba(10, 50, 90, 0.9);
   color: #f0f6ff;
   border: 1px solid rgba(93, 148, 206, 0.9);
 }
 
-.key-btn.correct { background: linear-gradient(135deg, #1fd75f, #0ba345); color: #02160a; }
-.key-btn.wrong { background: linear-gradient(135deg, #e24c4c, #a22222); color: #ffecec; }
+.key-btn.correct { background: linear-gradient(135deg, #1fd75f, #0ba345); color: #02160a; border: none; }
+.key-btn.wrong { background: linear-gradient(135deg, #e24c4c, #a22222); color: #ffecec; border: none; }
 .key-btn:disabled { opacity: 0.6; cursor: default; }
 
 .chooser-box, .guesser-box {
@@ -188,7 +180,7 @@ button.small-btn { padding: 4px 10px; font-size: 0.8rem; margin-left: 8px; }
 #letter-input { width: 56px; text-align: center; text-transform: uppercase; }
 
 .suggestions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-.suggestion-title { color: #cfe2ff; font-weight: 700; }
+.suggestion-title { color: #cfe2ff; font-weight: 800; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   padding: 6px 10px;

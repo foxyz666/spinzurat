@@ -2,19 +2,24 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8" />
-  <title>Spânzurătoarea Online (Role Swap)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spânzurătoarea Online</title>
   <link rel="stylesheet" href="style.css" />
+
   <!-- Firebase compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <!-- IMPORTANT: defer ca să nu mai fie null la getElementById -->
+  <script src="script.js" defer></script>
 </head>
 <body>
   <div class="app">
     <h1>Spânzurătoarea Online</h1>
 
-    <!-- PARTY SCREEN -->
+    <!-- LOBBY / PARTY SCREEN -->
     <section id="party-screen" class="screen active">
-      <h2>Party</h2>
+      <h2>Party Lobby</h2>
 
       <div class="name-input">
         <label>
@@ -34,6 +39,7 @@
             <option value="60">60 min</option>
           </select>
         </label>
+
         <label>
           Runde:
           <select id="rounds-select">
@@ -41,9 +47,6 @@
             <option value="7" selected>7</option>
             <option value="9">9</option>
             <option value="12">12</option>
-            <option value="15">15</option>
-            <option value="20">20</option>
-            <option value="30">30</option>
           </select>
         </label>
       </div>
@@ -53,22 +56,22 @@
         <button id="join-party-btn" class="secondary">Join Party</button>
       </div>
 
+      <!-- HOST PANEL (shows code + players) -->
       <div id="create-party-panel" class="panel hidden">
         <p>Party creat! Cod:</p>
+
         <div class="party-code-box">
           <span id="party-code-display"></span>
-          <button id="copy-code-btn" class="small-btn">Copy</button>
+          <button id="copy-code-btn" class="small-btn secondary">Copy</button>
         </div>
 
         <p><strong>Jucători:</strong></p>
         <ul id="party-players-list"></ul>
-        <p class="small-text" id="party-settings-summary"></p>
 
-        <p class="small-text">
-          Notă: în joc, primul care ghicește este Host-ul (după cerința ta).
-        </p>
+        <p class="small-text" id="party-settings-summary"></p>
       </div>
 
+      <!-- JOIN PANEL -->
       <div id="join-party-panel" class="panel hidden">
         <p>Introdu codul:</p>
         <input id="join-code-input" type="text" placeholder="ex: ABCD12" />
@@ -81,17 +84,13 @@
     <!-- GAME SCREEN -->
     <section id="game-screen" class="screen">
       <div class="topbar">
-        <div>
-          Party: <strong id="game-party-code"></strong>
-        </div>
-        <div>
-          Runda: <strong id="round-number">1</strong>
-        </div>
+        <div>Party: <strong id="game-party-code"></strong></div>
+        <div>Runda: <strong id="round-number">1</strong></div>
       </div>
 
       <div class="roles">
-        <div>Chooser (alege cuvântul): <strong id="chooser-name"></strong></div>
-        <div>Guesser (ghicește): <strong id="guesser-name"></strong></div>
+        <div>Chooser: <strong id="chooser-name"></strong></div>
+        <div>Guesser: <strong id="guesser-name"></strong></div>
       </div>
 
       <div class="layout">
@@ -120,9 +119,9 @@
           </div>
         </div>
 
-        <!-- Word & controls -->
+        <!-- Right side -->
         <div class="panel-right">
-          <div>
+          <div class="panel">
             <p><strong>Jucători în party:</strong></p>
             <ul id="game-players-list"></ul>
           </div>
@@ -143,6 +142,7 @@
               Cuvânt / expresie:
               <input id="secret-word-input" type="password" placeholder="scrie aici..." />
             </label>
+
             <button id="set-word-btn">Setează cuvântul</button>
             <p class="small-text">După setare, Guesser poate începe să ghicească.</p>
           </div>
@@ -168,7 +168,5 @@
       </div>
     </section>
   </div>
-
-  <script src="script.js"></script>
 </body>
 </html>
