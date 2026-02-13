@@ -382,7 +382,7 @@ function attachRoomListener() {
     // message
     gameMessage.className = "message";
     gameMessage.textContent = room.endMessage || "";
-    if ((room.endMessage || "").startsWith("Litera corecta aleasa")) {
+    if ((room.endMessage || "").startsWith("Litera corectă aleasă")) {
       gameMessage.classList.add("correct");
     } else if ((room.endMessage || "").startsWith("Literă greșită")) {
       gameMessage.classList.add("lose");
@@ -520,7 +520,7 @@ function sendGuess(letter) {
       state = "finished";
       endMessage = `Guesser a pierdut! Cuvântul era: "${room.originalWord}". Se schimbă rolurile...`;
     } else {
-      endMessage = found ? `Litera corecta aleasa: ${L}` : `Literă greșită: ${L}`;
+      endMessage = found ? `Litera corectă aleasă: ${L}` : `Literă greșită: ${L}`;
     }
 
     return {
