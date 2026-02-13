@@ -288,6 +288,7 @@ createPartyBtn.addEventListener("click", async () => {
     guessedLetters: "",
     letterStatus: {}, // { "A": "wrong"|"correct" }
     endMessage: "",
+    messageType: "",
 
     players: {
       [myId]: { id: myId, name: myName },
@@ -382,9 +383,9 @@ function attachRoomListener() {
     // message
     gameMessage.className = "message";
     gameMessage.textContent = room.endMessage || "";
-    if ((room.endMessage || "").startsWith("Litera corectă aleasă")) {
+    if (room.messageType === "correct") {
       gameMessage.classList.add("correct");
-    } else if ((room.endMessage || "").startsWith("Literă greșită")) {
+    } else if (room.messageType === "wrong") {
       gameMessage.classList.add("lose");
     }
 
@@ -450,6 +451,7 @@ setWordBtn.addEventListener("click", async () => {
     guessedLetters: "",
     letterStatus: {},
     endMessage: "Jocul a început! Guesser ghicește litere.",
+    messageType: "",
     state: "playing",
   });
 
@@ -512,6 +514,7 @@ function sendGuess(letter) {
 
     let state = room.state;
     let endMessage = room.endMessage || "";
+    let messageType = "";
 
     if (isWin) {
       state = "finished";
@@ -521,6 +524,7 @@ function sendGuess(letter) {
       endMessage = `Guesser a pierdut! Cuvântul era: "${room.originalWord}". Se schimbă rolurile...`;
     } else {
       endMessage = found ? `Litera corectă aleasă: ${L}` : `Literă greșită: ${L}`;
+      messageType = found ? "correct" : "wrong";
     }
 
     return {
@@ -531,6 +535,7 @@ function sendGuess(letter) {
       wrongGuesses: wrong,
       state,
       endMessage,
+      messageType,
     };
   }).then(async (result) => {
     // Dacă s-a terminat runda, facem swap automat (o singură dată)
@@ -579,7 +584,7 @@ async function swapRolesAndPrepareNextRound() {
     if (currentRound >= totalRounds) {
       room.gameCompleted = true;
       room.endMessage = `Joc încheiat! S-au jucat ${totalRounds} runde.`;
-      room.lastSwappedRound = currentRound;
+      room.messageType = "";
       return room;
     }
     if (room.lastSwappedRound === currentRound) {
@@ -604,6 +609,7 @@ async function swapRolesAndPrepareNextRound() {
     room.guessedLetters = "";
     room.letterStatus = {};
     room.endMessage = "Rundă nouă! Chooser alege un cuvânt.";
+    room.messageType = "";
     room.lastSwappedRound = currentRound;
 
     return room;
