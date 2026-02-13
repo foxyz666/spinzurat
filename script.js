@@ -576,6 +576,13 @@ function sendGuess(letter) {
     const secret = String(room.secretNormalized || "");
     const original = String(room.originalWord || "");
 
+    // Debug logging
+    console.log("=== GUESS DEBUG ===");
+    console.log("Letter guessed:", L);
+    console.log("Normalized:", norm);
+    console.log("Secret normalized:", secret);
+    console.log("Original word:", original);
+
     const secretArr = Array.from(secret);
     const origArr = Array.from(original);
 
@@ -583,14 +590,20 @@ function sendGuess(letter) {
     const revealedArr = Array.isArray(room.revealed) ? [...room.revealed] : [];
     while (revealedArr.length < secretArr.length) revealedArr.push("");
 
+    console.log("Revealed before:", revealedArr);
+
     let found = false;
     for (let i = 0; i < secretArr.length; i++) {
       const alreadyShown = typeof revealedArr[i] === "string" && revealedArr[i].length > 0;
       if (secretArr[i] === norm && !alreadyShown) {
         revealedArr[i] = origArr[i]; // show original char
         found = true;
+        console.log(`Match at index ${i}: '${secretArr[i]}' === '${norm}'`);
       }
     }
+
+    console.log("Found:", found);
+    console.log("Revealed after:", revealedArr);
 
     let wrong = room.wrongGuesses || 0;
     if (!found) wrong++;

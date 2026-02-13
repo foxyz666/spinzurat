@@ -1,0 +1,4 @@
+test_*.js
+node_modules/
+.DS_Store
+*.log
