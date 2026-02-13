@@ -55,6 +55,11 @@ const EASY_WORDS = [
 ];
 
 // =======================
+// Lobby config
+// =======================
+const LOBBY_COUNTDOWN_MS = 5000;
+
+// =======================
 // State local
 // =======================
 let myId = null;
@@ -62,6 +67,9 @@ let myName = "";
 let partyCode = null;
 let roomRef = null;
 let unsubscribed = false;
+
+// countdown UI interval (local only)
+let countdownInterval = null;
 
 // =======================
 // DOM
@@ -152,7 +160,7 @@ function renderPlayersList(listEl, playersObj) {
   if (!playersObj) return;
   Object.values(playersObj).forEach((p) => {
     const li = document.createElement("li");
-    li.textContent = p.name + (p.id === playersObj[p.id]?.hostId ? "" : "");
+    li.textContent = p.name;
     listEl.appendChild(li);
   });
 }
@@ -252,6 +260,27 @@ function buildKeyboard(disabledLetters = "", correctnessMap = {}) {
   }
 }
 
+function stopCountdownInterval() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+}
+
+function startCountdownInterval(getEndsAt) {
+  stopCountdownInterval();
+  countdownInterval = setInterval(() => {
+    const endsAt = getEndsAt();
+    if (!endsAt) return;
+    const leftMs = endsAt - Date.now();
+    const leftSec = Math.max(0, Math.ceil(leftMs / 1000));
+    partyStatus.textContent = `Jocul începe în ${leftSec} secunde...`;
+    if (leftMs <= 0) {
+      stopCountdownInterval();
+    }
+  }, 200);
+}
+
 // =======================
 // Party create/join
 // =======================
@@ -264,20 +293,23 @@ createPartyBtn.addEventListener("click", async () => {
   partyCode = randomPartyCode();
   roomRef = db.ref("rooms/" + partyCode);
 
-  // IMPORTANT: primul GUESSER este HOST-ul (cerința ta)
-  // => la început chooser = primul guest care intră, guesser = host
+  // IMPORTANT: primul GUESSER este HOST-ul
+  // chooser devine primul guest care intră
   await roomRef.set({
     createdAt: Date.now(),
     expiresAt: Date.now() + expireMinutes * 60 * 1000,
     expireMinutes,
     totalRounds,
     round: 1,
+
     state: "lobby", // lobby | choosing | playing | finished
+    countdownEndsAt: null,
+
     maxWrong: MAX_WRONG,
 
     hostId: myId,
-    chooserId: null,     // devine guest când intră
-    guesserId: myId,     // host ghicește primul
+    chooserId: null,
+    guesserId: myId,
 
     // round state
     originalWord: "",
@@ -286,8 +318,9 @@ createPartyBtn.addEventListener("click", async () => {
     revealed: [],
     wrongGuesses: 0,
     guessedLetters: "",
-    letterStatus: {}, // { "A": "wrong"|"correct" }
-    endMessage: "",
+    letterStatus: {},
+
+    endMessage: "Lobby creat. Așteaptă încă un jucător...",
     messageType: "",
 
     players: {
@@ -300,6 +333,9 @@ createPartyBtn.addEventListener("click", async () => {
   createPartyPanel.classList.remove("hidden");
   joinPartyPanel.classList.add("hidden");
   partyStatus.textContent = "Party creat. Trimite codul prietenului tău.";
+
+  // STAI ÎN LOBBY (party screen), nu sări în joc
+  showScreen(partyScreen);
 
   attachRoomListener();
 });
@@ -336,18 +372,21 @@ joinCodeConfirmBtn.addEventListener("click", async () => {
   // Add player
   await roomRef.child("players/" + myId).set({ id: myId, name: myName });
 
-  // Dacă încă nu există chooserId, acesta guest devine chooser (alege cuvântul)
+  // Dacă încă nu există chooserId, acest guest devine chooser (alege cuvântul)
   await roomRef.transaction((room) => {
     if (!room) return room;
-    if (!room.chooserId) {
-      room.chooserId = myId;
-      // imediat după ce avem chooser+guesser, intrăm în choosing
-      room.state = "choosing";
-    }
+    if (!room.chooserId) room.chooserId = myId;
+
+    // RĂMÂNEM ÎN LOBBY - nu intrăm în choosing aici
+    // countdown-ul pornește separat când sunt 2 jucători
+    if (room.state !== "lobby") room.state = "lobby";
+
     return room;
   });
 
-  partyStatus.textContent = "Conectat!";
+  partyStatus.textContent = "Conectat! Așteaptă startul jocului...";
+  showScreen(partyScreen);
+
   attachRoomListener();
 });
 
@@ -361,17 +400,80 @@ function attachRoomListener() {
   roomRef.on("value", (snap) => {
     const room = snap.val();
     if (!room) return;
+
     if (room.expiresAt && Date.now() > room.expiresAt) {
+      stopCountdownInterval();
       showScreen(partyScreen);
       partyStatus.textContent = "Party-ul a expirat. Creează unul nou.";
       return;
     }
 
+    const playersCount = room.players ? Object.keys(room.players).length : 0;
+    const isHost = room.hostId === myId;
+
+    // =======================
+    // LOBBY logic + countdown
+    // =======================
+    if (room.state === "lobby") {
+      showScreen(partyScreen);
+
+      // panoul de create party să rămână vizibil pentru host
+      if (room.hostId === myId) {
+        createPartyPanel.classList.remove("hidden");
+        joinPartyPanel.classList.add("hidden");
+        partyCodeDisplay.textContent = partyCode || "";
+      }
+
+      // mesaj lobby
+      if (playersCount < 2) {
+        stopCountdownInterval();
+        partyStatus.textContent = "Lobby: așteaptă încă un jucător...";
+      } else {
+        // pornește countdown (o singură dată, doar host)
+        if (isHost && !room.countdownEndsAt) {
+          roomRef.update({
+            countdownEndsAt: Date.now() + LOBBY_COUNTDOWN_MS,
+            endMessage: "Jocul începe în 5 secunde...",
+            messageType: "",
+          });
+        }
+
+        // afișează countdown local (pentru toți)
+        if (room.countdownEndsAt) {
+          const endsAt = room.countdownEndsAt;
+          startCountdownInterval(() => endsAt);
+
+          const leftMs = endsAt - Date.now();
+          if (leftMs <= 0) {
+            stopCountdownInterval();
+            // host schimbă state-ul după ce expiră
+            if (isHost) {
+              roomRef.update({
+                state: "choosing",
+                countdownEndsAt: null,
+                endMessage: "Alegeți cuvântul! (Chooser alege)",
+                messageType: "",
+              });
+            }
+          }
+        }
+      }
+
+      // update lista players în lobby
+      renderPlayersList(partyPlayersList, room.players || {});
+      return; // nu randăm UI de game în lobby
+    }
+
+    // =======================
+    // GAME UI
+    // =======================
+    stopCountdownInterval();
     showScreen(gameScreen);
+
     gamePartyCodeEl.textContent = partyCode;
     roundNumberEl.textContent = String(room.round || 1);
 
-    // players
+    // players + roles
     setPlayersUI(room.players || {}, room.chooserId, room.guesserId);
 
     // status hangman + word
@@ -401,7 +503,7 @@ function attachRoomListener() {
     // guesser UI
     guesserBox.classList.toggle("hidden", !(room.state === "playing" && isGuesser));
 
-    // Keyboard state for everyone (show it only for guesser but we still compute)
+    // Keyboard state
     const guessedLetters = room.guessedLetters || "";
     const letterStatus = room.letterStatus || {};
     if (room.state === "playing" && isGuesser) {
@@ -415,8 +517,10 @@ function attachRoomListener() {
     }
 
     // If finished, allow host to force next round (optional)
-    const isHost = room.hostId === myId;
-    forceNextRoundBtn.classList.toggle("hidden", !(room.state === "finished" && isHost && !room.gameCompleted));
+    forceNextRoundBtn.classList.toggle(
+      "hidden",
+      !(room.state === "finished" && isHost && !room.gameCompleted)
+    );
   });
 }
 
@@ -439,7 +543,10 @@ setWordBtn.addEventListener("click", async () => {
 
   const letters = Array.from(word);
   const lengths = letters.map((ch) => (ch === " " ? "space" : ch === "-" ? "dash" : "letter"));
+
+  // IMPORTANT: forțăm null pentru litere (ca să nu ajungă undefined)
   const revealed = letters.map((ch) => (ch === " " ? " " : ch === "-" ? "-" : null));
+
   const normalized = letters.map(normalizeLetter).join("");
 
   await roomRef.update({
@@ -459,96 +566,97 @@ setWordBtn.addEventListener("click", async () => {
 });
 
 // =======================
-// Guesser: guess letter (FIX: chiar trimite și actualizează DB)
+// Guesser: guess letter
 // =======================
 function sendGuess(letter) {
   if (!roomRef) return;
 
-  // IMPORTANT: doar guesser are voie să ghicească
-  roomRef.transaction((room) => {
-    if (!room) return room;
-    if (room.state !== "playing") return room;
-    if (room.guesserId !== myId) return room;
+  roomRef
+    .transaction((room) => {
+      if (!room) return room;
+      if (room.state !== "playing") return room;
+      if (room.guesserId !== myId) return room;
 
-    const L = String(letter || "").toUpperCase();
-    if (!/^[A-Z]$/.test(L)) return room;
+      const L = String(letter || "").toUpperCase();
+      if (!/^[A-Z]$/.test(L)) return room;
 
-    let guessed = room.guessedLetters || "";
-    const statusMap = room.letterStatus || {};
+      let guessed = room.guessedLetters || "";
+      const statusMap = room.letterStatus || {};
 
-    if (guessed.includes(L)) return room; // deja ghicit
+      if (guessed.includes(L)) return room; // deja ghicit
 
-    guessed += L;
+      guessed += L;
 
-    const norm = normalizeLetter(L);
-    const secret = room.secretNormalized || "";
-    const orig = room.originalWord || "";
+      const norm = normalizeLetter(L);
+      const secret = room.secretNormalized || "";
+      const orig = room.originalWord || "";
 
-    const secretArr = Array.from(secret);
-    const origArr = Array.from(orig);
-    const revealedArr = Array.isArray(room.revealed) ? [...room.revealed] : [];
+      const secretArr = Array.from(secret);
+      const origArr = Array.from(orig);
 
-    let found = false;
-    for (let i = 0; i < secretArr.length; i++) {
-      if (secretArr[i] === norm && revealedArr[i] === null) {
-        revealedArr[i] = origArr[i];
-        found = true;
+      // FIX: copiem array-ul și tratăm și undefined ca "nedezvăluit"
+      const revealedArr = Array.isArray(room.revealed) ? [...room.revealed] : [];
+
+      let found = false;
+      for (let i = 0; i < secretArr.length; i++) {
+        const notRevealed = revealedArr[i] === null || revealedArr[i] === undefined;
+        if (secretArr[i] === norm && notRevealed) {
+          revealedArr[i] = origArr[i];
+          found = true;
+        }
       }
-    }
 
-    let wrong = room.wrongGuesses || 0;
-    if (!found) wrong++;
+      let wrong = room.wrongGuesses || 0;
+      if (!found) wrong++;
 
-    statusMap[L] = found ? "correct" : "wrong";
+      statusMap[L] = found ? "correct" : "wrong";
 
-    // win/lose check
-    const lengths = room.lengths || [];
-    const isWin =
-      revealedArr.length &&
-      revealedArr.every((v, idx) => {
-        if (lengths[idx] === "space" || lengths[idx] === "dash") return true;
-        return v !== null;
-      });
+      // win/lose check
+      const lengths = room.lengths || [];
+      const isWin =
+        revealedArr.length &&
+        revealedArr.every((v, idx) => {
+          if (lengths[idx] === "space" || lengths[idx] === "dash") return true;
+          return v !== null && v !== undefined; // FIX
+        });
 
-    const isLose = wrong >= (room.maxWrong || MAX_WRONG);
+      const isLose = wrong >= (room.maxWrong || MAX_WRONG);
 
-    let state = room.state;
-    let endMessage = room.endMessage || "";
-    let messageType = "";
+      let state = room.state;
+      let endMessage = room.endMessage || "";
+      let messageType = "";
 
-    if (isWin) {
-      state = "finished";
-      endMessage = "Guesser a câștigat! Se schimbă rolurile...";
-    } else if (isLose) {
-      state = "finished";
-      endMessage = `Guesser a pierdut! Cuvântul era: "${room.originalWord}". Se schimbă rolurile...`;
-    } else {
-      endMessage = found ? `Litera corectă aleasă: ${L}` : `Literă greșită: ${L}`;
-      messageType = found ? "correct" : "wrong";
-    }
+      if (isWin) {
+        state = "finished";
+        endMessage = "Guesser a câștigat! Se schimbă rolurile...";
+      } else if (isLose) {
+        state = "finished";
+        endMessage = `Guesser a pierdut! Cuvântul era: "${room.originalWord}". Se schimbă rolurile...`;
+      } else {
+        endMessage = found ? `Litera corectă aleasă: ${L}` : `Literă greșită: ${L}`;
+        messageType = found ? "correct" : "wrong";
+      }
 
-    return {
-      ...room,
-      guessedLetters: guessed,
-      letterStatus: statusMap,
-      revealed: revealedArr,
-      wrongGuesses: wrong,
-      state,
-      endMessage,
-      messageType,
-    };
-  }).then(async (result) => {
-    // Dacă s-a terminat runda, facem swap automat (o singură dată)
-    // folosim o tranzacție separată ca să evităm conflicte
-    if (!result?.snapshot?.exists()) return;
-    const room = result.snapshot.val();
-    if (!room) return;
+      return {
+        ...room,
+        guessedLetters: guessed,
+        letterStatus: statusMap,
+        revealed: revealedArr,
+        wrongGuesses: wrong,
+        state,
+        endMessage,
+        messageType,
+      };
+    })
+    .then(async (result) => {
+      if (!result?.snapshot?.exists()) return;
+      const room = result.snapshot.val();
+      if (!room) return;
 
-    if (room.state === "finished") {
-      // swap roles
-      await swapRolesAndPrepareNextRound();
-    }
-  });
+      if (room.state === "finished") {
+        await swapRolesAndPrepareNextRound();
+      }
+    });
 }
 
 // guess via input
@@ -573,20 +681,20 @@ letterInput.addEventListener("keydown", (e) => {
 async function swapRolesAndPrepareNextRound() {
   if (!roomRef) return;
 
-  // tranzacție: dacă deja am făcut swap pentru această rundă, nu îl mai facem
   await roomRef.transaction((room) => {
     if (!room) return room;
     if (room.state !== "finished") return room;
 
-    // marker: lastSwappedRound
     const currentRound = room.round || 1;
     const totalRounds = room.totalRounds || 7;
+
     if (currentRound >= totalRounds) {
       room.gameCompleted = true;
       room.endMessage = `Joc încheiat! S-au jucat ${totalRounds} runde.`;
       room.messageType = "";
       return room;
     }
+
     if (room.lastSwappedRound === currentRound) {
       return room; // deja swap-uit
     }
@@ -595,11 +703,11 @@ async function swapRolesAndPrepareNextRound() {
     const oldGuesser = room.guesserId;
 
     // swap
-    room.chooserId = oldGuesser; // guesser devine chooser
-    room.guesserId = oldChooser; // chooser devine guesser
+    room.chooserId = oldGuesser;
+    room.guesserId = oldChooser;
     room.round = currentRound + 1;
 
-    // pregătim noua rundă
+    // noua rundă
     room.state = "choosing";
     room.originalWord = "";
     room.secretNormalized = "";
