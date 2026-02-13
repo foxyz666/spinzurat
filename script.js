@@ -82,6 +82,8 @@ const joinPartyPanel = document.getElementById("join-party-panel");
 const partyCodeDisplay = document.getElementById("party-code-display");
 const copyCodeBtn = document.getElementById("copy-code-btn");
 const partyPlayersList = document.getElementById("party-players-list");
+const partyPlayersStatus = document.getElementById("party-players-status");
+const startGameBtn = document.getElementById("start-game-btn");
 
 const joinCodeInput = document.getElementById("join-code-input");
 const joinCodeConfirmBtn = document.getElementById("join-code-confirm-btn");
@@ -158,6 +160,35 @@ function renderPlayersList(listEl, playersObj) {
     li.textContent = p.name;
     listEl.appendChild(li);
   });
+}
+
+function renderPlayersStatus(statusEl, playersObj, maxPlayers = 2) {
+  if (!statusEl) return;
+  statusEl.innerHTML = "";
+  
+  const players = playersObj ? Object.values(playersObj) : [];
+  
+  // Show connected players
+  players.forEach((p, idx) => {
+    const item = document.createElement("div");
+    item.className = "player-status-item connected";
+    item.innerHTML = `
+      <span>Jucător ${idx + 1}: ${p.name}</span>
+      <span class="player-status-badge connected">Conectat</span>
+    `;
+    statusEl.appendChild(item);
+  });
+  
+  // Show waiting slots
+  for (let i = players.length; i < maxPlayers; i++) {
+    const item = document.createElement("div");
+    item.className = "player-status-item waiting";
+    item.innerHTML = `
+      <span>Jucător ${i + 1}</span>
+      <span class="player-status-badge waiting">Așteptare...</span>
+    `;
+    statusEl.appendChild(item);
+  }
 }
 
 function setPlayersUI(playersObj, chooserId, guesserId) {
@@ -407,32 +438,23 @@ function attachRoomListener() {
     if (room.state === "lobby") {
       showScreen(partyScreen);
 
-      renderPlayersList(partyPlayersList, room.players || {});
+      // Update player status display
+      renderPlayersStatus(partyPlayersStatus, room.players || {}, 2);
       partyCodeDisplay.textContent = partyCode || "";
 
       if (playersCount < 2) {
         stopCountdown();
-        partyStatus.textContent = "Lobby: așteaptă încă un jucător...";
+        partyStatus.textContent = "Așteaptă jucătorul 2...";
+        if (startGameBtn) startGameBtn.classList.add("hidden");
       } else {
-        // host pornește countdown o singură dată
-        if (isHost && !room.countdownEndsAt) {
-          roomRef.update({
-            countdownEndsAt: Date.now() + LOBBY_COUNTDOWN_MS,
-            endMessage: "Jocul începe în 5 secunde...",
-            messageType: "",
-          });
-        }
-
-        if (room.countdownEndsAt) {
-          startCountdown(room.countdownEndsAt);
-          const left = room.countdownEndsAt - Date.now();
-          if (left <= 0 && isHost) {
-            roomRef.update({
-              state: "choosing",
-              countdownEndsAt: null,
-              endMessage: "Chooser alege cuvântul.",
-              messageType: "",
-            });
+        // Both players connected - show start button to host
+        stopCountdown();
+        partyStatus.textContent = "Ambii jucători conectați! Host poate porni jocul.";
+        if (startGameBtn) {
+          if (isHost) {
+            startGameBtn.classList.remove("hidden");
+          } else {
+            startGameBtn.classList.add("hidden");
           }
         }
       }
@@ -554,6 +576,13 @@ function sendGuess(letter) {
     const secret = String(room.secretNormalized || "");
     const original = String(room.originalWord || "");
 
+    // Debug logging
+    console.log("=== GUESS DEBUG ===");
+    console.log("Letter guessed:", L);
+    console.log("Normalized:", norm);
+    console.log("Secret normalized:", secret);
+    console.log("Original word:", original);
+
     const secretArr = Array.from(secret);
     const origArr = Array.from(original);
 
@@ -561,14 +590,20 @@ function sendGuess(letter) {
     const revealedArr = Array.isArray(room.revealed) ? [...room.revealed] : [];
     while (revealedArr.length < secretArr.length) revealedArr.push("");
 
+    console.log("Revealed before:", revealedArr);
+
     let found = false;
     for (let i = 0; i < secretArr.length; i++) {
       const alreadyShown = typeof revealedArr[i] === "string" && revealedArr[i].length > 0;
       if (secretArr[i] === norm && !alreadyShown) {
         revealedArr[i] = origArr[i]; // show original char
         found = true;
+        console.log(`Match at index ${i}: '${secretArr[i]}' === '${norm}'`);
       }
     }
+
+    console.log("Found:", found);
+    console.log("Revealed after:", revealedArr);
 
     let wrong = room.wrongGuesses || 0;
     if (!found) wrong++;
@@ -694,5 +729,39 @@ copyCodeBtn.addEventListener("click", async () => {
   } catch (e) {
     console.warn(e);
     partyStatus.textContent = "Nu am putut copia (browserul a blocat).";
+  }
+});
+
+// Start game button (manual start instead of auto-countdown)
+startGameBtn.addEventListener("click", async () => {
+  if (!roomRef) return;
+  
+  try {
+    const snap = await roomRef.get();
+    const room = snap.val();
+    
+    if (!room) return;
+    if (room.hostId !== myId) {
+      partyStatus.textContent = "Doar host-ul poate porni jocul!";
+      return;
+    }
+    
+    const playersCount = room.players ? Object.keys(room.players).length : 0;
+    if (playersCount < 2) {
+      partyStatus.textContent = "Așteaptă al doilea jucător!";
+      return;
+    }
+    
+    await roomRef.update({
+      state: "choosing",
+      countdownEndsAt: null,
+      endMessage: "Chooser alege cuvântul.",
+      messageType: "",
+    });
+    
+    partyStatus.textContent = "Jocul începe!";
+  } catch (err) {
+    console.error(err);
+    partyStatus.textContent = "Eroare la pornirea jocului: " + (err?.message || String(err));
   }
 });
